@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="仅在本机工作的微信聊天记录采集、核验与备份工作台。">
+  <title>本地聊天档案 · Capture Next</title>
+  <link rel="stylesheet" href="/style.css">
+  <!-- CAPTURE_BOOTSTRAP: server injects window.__BOOTSTRAP__ before app.js -->
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要内容</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="工作台导航">
+      <a class="brand" href="#overview"><span class="brand-mark" aria-hidden="true">◈</span><span>本地聊天档案<small>CAPTURE NEXT</small></span></a>
+      <div class="workspace-tag"><span class="status-dot"></span> 独立新仓库</div>
+      <nav class="navigation" aria-label="功能分区">
+        <a href="#overview" class="nav-link active" aria-current="page"><span aria-hidden="true">◫</span>概览</a>
+        <a href="#messages" class="nav-link"><span aria-hidden="true">☷</span>消息浏览</a>
+        <a href="#assets" class="nav-link"><span aria-hidden="true">▧</span>附件档案</a>
+        <a href="#backups" class="nav-link"><span aria-hidden="true">▣</span>备份与恢复</a>
+        <a href="#compare" class="nav-link"><span aria-hidden="true">⇄</span>比对与去重</a>
+        <a href="#jobs" class="nav-link"><span aria-hidden="true">≡</span>任务日志<span id="running-count" class="nav-count" hidden>0</span></a>
+      </nav>
+      <div class="sidebar-foot"><span class="privacy-icon" aria-hidden="true">⌂</span><strong>你的数据，留在本机</strong><p>无外部字体、无统计脚本、无云端上传。</p><span class="version-tag">LOCAL-FIRST · NEXT</span></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><div class="breadcrumb">工作台 <span aria-hidden="true">/</span> <span id="breadcrumb-page">概览</span></div><div class="connection"><span id="connection-dot" class="status-dot pending"></span><span id="connection-label" role="status">正在连接本地服务</span></div></header>
+      <main id="main" tabindex="-1">
+        <div id="connection-error" class="banner error-banner" role="alert" hidden><strong>本地服务连接中断</strong><span id="connection-error-text">正在尝试重新连接，页面不会启动新的采集任务。</span><button id="retry-connection" class="button small secondary" type="button">重新连接</button></div>
+        <section id="overview" class="page" aria-labelledby="overview-title">
+          <div class="page-heading"><div><div class="eyebrow">YOUR LOCAL ARCHIVE</div><h1 id="overview-title">每一段对话，都有据可循。</h1><p>采集本机已落盘记录，保留版本、来源与冲突证据。</p></div><span class="badge subtle">仅本机已落盘</span></div>
+          <div class="capture-card">
+            <div class="capture-main"><div class="section-kicker">采集状态</div><div class="capture-state"><span id="capture-dot" class="status-dot pending"></span><h2 id="capture-state">等待服务状态</h2></div><p id="capture-description">连接后可启动实时采集，或手动执行一次断线补采。</p><div class="capture-actions"><button id="watch-toggle" class="button primary" type="button" disabled>启动实时采集</button><button class="button secondary" type="button" data-action="capture" disabled>立即补采</button><button class="button text-button" type="button" data-action="verify" disabled>核验归档 <span aria-hidden="true">↗</span></button></div></div>
+            <div class="cycle-summary"><div class="section-kicker">最近一次采集</div><strong id="last-cycle-status">尚无记录</strong><span id="last-cycle-time">—</span><span id="last-cycle-errors">连接后更新</span></div>
+          </div>
+          <div id="busy-banner" class="banner busy-banner" role="status" hidden><span class="spinner" aria-hidden="true"></span><div><strong id="busy-title">后台任务执行中</strong><p>重任务期间采集工作线程可能暂停；任务完成后以服务状态为准。</p></div><a href="#jobs">查看任务 →</a></div>
+          <div class="stat-grid"><article class="stat-card"><span>当前原始观察记录</span><strong id="stat-messages">—</strong><small>不是跨来源去重后的消息数</small></article><article class="stat-card"><span>保留版本</span><strong id="stat-versions">—</strong><small>版本与来源证据不被覆盖</small></article><article class="stat-card"><span>采集批次</span><strong id="stat-captures">—</strong><small>可追溯的采集过程</small></article><article class="stat-card"><span>附件文件</span><strong id="stat-assets">—</strong><small>原始归档不等于可解码</small></article></div>
+          <div class="overview-grid"><article class="panel"><div class="panel-heading"><h2>先采集，再核验</h2><span class="badge">工作流程</span></div><ol class="workflow"><li><span class="step-number">01</span><div><strong>接续本机记录</strong><p>登录微信并完成同步后，启动实时采集或立即补采。</p></div></li><li><span class="step-number">02</span><div><strong>验证完整性与差异</strong><p>核验归档、比对同一截面；去重仍保留来源及冲突版本。</p></div></li><li><span class="step-number">03</span><div><strong>创建独立备份</strong><p>生成仓库快照，恢复时使用新的目标名称，不覆盖原仓库。</p></div></li></ol></article><article class="panel boundaries"><div class="panel-heading"><h2>清楚知道边界</h2><span class="badge amber">请留意</span></div><p>断线补采依赖微信把遗漏记录同步到本机。<strong>补采完成，不代表手机全部历史已备份。</strong></p><p>附件原始文件、解密密钥和可浏览副本是不同层次；仅有原始归档不保证能够解码。</p><p>没有核验结果时，不应把所有链路视为已完成测试。</p><div class="storage-line"><span>当前仓库</span><code id="output-root">等待连接</code></div></article></div>
+          <article class="panel recent-panel"><div class="panel-heading"><h2>最近的活动</h2><a href="#jobs">全部任务 →</a></div><div id="recent-jobs" class="activity-list"><p class="empty-state">正在加载任务记录…</p></div></article>
+        </section>
+        <section id="messages" class="page" aria-labelledby="messages-title" hidden>
+          <div class="page-heading"><div><div class="eyebrow">MESSAGES</div><h1 id="messages-title">消息浏览</h1><p>查阅当前归档中的消息，检索正文并逐页浏览。</p></div><span id="messages-count" class="badge subtle">等待加载</span></div>
+          <form id="message-search" class="search-bar" role="search"><label class="sr-only" for="message-query">搜索消息正文</label><span aria-hidden="true">⌕</span><input id="message-query" type="search" placeholder="搜索正文中的关键词…" autocomplete="off"><button type="submit" class="button primary">搜索</button></form>
+          <p class="helper-text">每页 50 条仅限制浏览显示，不限制采集数量。时间按原记录呈现。</p>
+          <div class="panel message-panel"><div id="message-results" aria-live="polite"><p class="empty-state">进入后加载消息。</p></div><div class="pagination"><button id="message-prev" class="button small secondary" type="button" disabled>上一页</button><span id="message-page">第 1 页</span><button id="message-next" class="button small secondary" type="button" disabled>下一页</button></div></div>
+        </section>
+        <section id="assets" class="page" aria-labelledby="assets-title" hidden>
+          <div class="page-heading"><div><div class="eyebrow">ATTACHMENTS</div><h1 id="assets-title">附件档案</h1><p>将本机附件归入独立档案，并按哈希导出副本。</p></div><button id="assets-refresh" class="button secondary" type="button">刷新列表</button></div>
+          <div class="banner notice-banner"><span aria-hidden="true">ⓘ</span><p><strong>原始归档 ≠ 已解码。</strong>未明确提供解码验证的文件仅标记为原始归档。导出保留原始内容，不承诺预览或解密。</p></div>
+          <form id="assets-configure" class="panel form-panel"><h2>附件来源目录</h2><label for="assets-root">本机附件根目录</label><div class="input-action"><input id="assets-root" type="text" placeholder="输入本机附件目录的完整路径" required autocomplete="off"><button class="button primary" type="submit">保存配置</button></div><p class="helper-text">仅配置新后端的附件来源，不修改微信原始文件。目录可访问性由本地服务校验。</p></form>
+          <article class="panel"><div class="panel-heading"><h2>已归档文件</h2><span id="assets-count" class="badge">等待加载</span></div><div id="asset-results"><p class="empty-state">进入后加载附件。</p></div><div class="pagination"><button id="asset-prev" class="button small secondary" type="button" disabled>上一页</button><span id="asset-page">第 1 页</span><button id="asset-next" class="button small secondary" type="button" disabled>下一页</button></div></article>
+        </section>
+        <section id="backups" class="page" aria-labelledby="backups-title" hidden>
+          <div class="page-heading"><div><div class="eyebrow">BACKUP & RESTORE</div><h1 id="backups-title">备份与恢复</h1><p>独立快照，独立恢复；保留原始仓库与历史证据。</p></div><button id="backups-refresh" class="button secondary" type="button">刷新快照</button></div>
+          <div class="two-column"><form id="backup-create" class="panel form-panel"><div class="section-kicker">创建快照</div><h2>为当前仓库留一份底稿</h2><label for="backup-name">备份输出名称</label><input id="backup-name" type="text" placeholder="例如 archive-2026-10-20" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,79}" required maxlength="80" autocomplete="off"><p class="helper-text">使用字母、数字、点、短横线或下划线，不接受路径。</p><label class="checkbox-label" for="include-secrets"><input id="include-secrets" type="checkbox"><span>同时包含解密密钥等敏感信息</span></label><p class="sensitive-note">默认不包含密钥。勾选后请将备份视为敏感资料，妥善保管并限制访问。</p><button class="button primary" type="submit">创建备份快照</button></form><form id="backup-restore" class="panel form-panel"><div class="section-kicker">恢复至新目录</div><h2>先选快照，再创建副本</h2><label for="restore-snapshot">快照</label><select id="restore-snapshot" required><option value="">加载快照后选择</option></select><label for="restore-name">新的恢复目标名称</label><input id="restore-name" type="text" placeholder="例如 restored-check-01" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,79}" required maxlength="80" autocomplete="off"><p class="helper-text">服务端仅允许新的目标名称；不覆盖当前仓库。恢复成功后仍需查看核验结果。</p><label class="checkbox-label" for="restore-confirm"><input id="restore-confirm" type="checkbox" required><span>我确认恢复到新的独立目录</span></label><button class="button secondary" type="submit">恢复为独立副本</button></form></div>
+          <article class="panel"><div class="panel-heading"><h2>新仓库快照</h2><span id="backup-count" class="badge">等待加载</span></div><div id="backup-results"><p class="empty-state">进入后加载快照。</p></div></article>
+        </section>
+        <section id="compare" class="page" aria-labelledby="compare-title" hidden>
+          <div class="page-heading"><div><div class="eyebrow">RECONCILIATION</div><h1 id="compare-title">比对与去重</h1><p>让差异有出处，让合并不丢证据。</p></div><span class="badge subtle">旧归档只读</span></div>
+          <div class="banner notice-banner"><span aria-hidden="true">ⓘ</span><p>去重按逻辑身份处理，保留来源和冲突版本。导出行数相同不等于内容完全一致，请以逐项核验报告为准。</p></div>
+          <div class="two-column"><article class="panel action-panel"><div class="action-icon" aria-hidden="true">⇄</div><h2>同步托管 WUA</h2><p>把新仓库内容同步至受本工具管理的 WUA 输出。不会授权修改旧工具或旧归档。</p><button class="button primary" type="button" data-action="sync_wua" disabled>同步托管 WUA</button></article><article class="panel action-panel"><div class="action-icon" aria-hidden="true">✓</div><h2>同截面独立核验</h2><p>在可比的同一截面运行独立核验，查看缺失、重复、冲突和错误，不将同步完成当作核验通过。</p><button class="button secondary" type="button" data-action="validate" disabled>运行独立核验</button></article></div>
+          <form id="compare-form" class="panel form-panel"><div class="panel-heading"><h2>与旧归档只读对照</h2><span class="badge">不修改旧档案</span></div><p class="helper-text">先在后台同步当前归并结果至专用托管 WUA，再与参考档案只读比对。尚未同步的记录可能使本次成为重任务；旧参考档案始终不写入。</p><label for="compare-reference">参考归档路径</label><input id="compare-reference" type="text" placeholder="输入用于只读比对的本机归档路径" required autocomplete="off"><label for="compare-name">报告输出名称</label><input id="compare-name" type="text" placeholder="例如 comparison-01" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,79}" required maxlength="80" autocomplete="off"><p class="helper-text">允许的参考路径和报告目标由本地服务校验。比对过程不覆盖参考归档。</p><button class="button primary" type="submit">同步当前结果并只读比对</button></form>
+          <article class="panel"><div class="panel-heading"><h2>采集周期记录</h2><button id="reports-refresh" class="button small secondary" type="button">刷新</button></div><p class="helper-text">以下仅为采集过程记录，不代表对象核验或同源比对通过；独立核验、比对与去重结果请在<a href="#jobs">任务日志</a>中查看。</p><div id="report-results"><p class="empty-state">进入后加载记录。</p></div></article>
+        </section>
+        <section id="jobs" class="page" aria-labelledby="jobs-title" hidden>
+          <div class="page-heading"><div><div class="eyebrow">ACTIVITY LOG</div><h1 id="jobs-title">任务日志</h1><p>任务排队串行执行。完成、失败与核验结论分别呈现。</p></div><button id="jobs-refresh" class="button secondary" type="button">刷新任务</button></div>
+          <div class="banner notice-banner"><span aria-hidden="true">ⓘ</span><p>停止采集请求会在当前工作完成后生效。重任务不承诺与采集并行；按钮提交成功仅表示任务已进入队列。</p></div>
+          <article class="panel"><div class="panel-heading"><h2>最近任务</h2><span class="badge">最多显示 100 条</span></div><div id="job-results" aria-live="polite"><p class="empty-state">正在加载任务记录…</p></div></article>
+        </section>
+        <footer class="main-footer"><span><span class="status-dot"></span> 本地优先 · 证据保留</span><span id="last-updated">等待首次更新</span></footer>
+      </main>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+  <dialog id="export-dialog" aria-labelledby="export-title" aria-describedby="export-description"><form id="asset-export" class="dialog-form"><div class="panel-heading"><h2 id="export-title">导出原始附件</h2><button id="export-cancel" class="icon-button" type="button" aria-label="关闭导出对话框">×</button></div><p id="export-description" class="helper-text">导出归档副本，不修改源文件；未验证的加密附件仍可能无法直接打开。</p><label for="export-name">输出文件名称</label><input id="export-name" type="text" required maxlength="80" autocomplete="off"><p id="export-source" class="file-path"></p><button class="button primary" type="submit">创建导出任务</button></form></dialog>
+</body>
+</html>

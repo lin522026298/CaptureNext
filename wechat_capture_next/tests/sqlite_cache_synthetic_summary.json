@@ -1,0 +1,104 @@
+{
+  "baseline_revision": "29eecdc",
+  "reproduce": "python -m wechat_capture_next.tests.benchmark_sqlite_cache --rows 6000",
+  "synthetic_only": true,
+  "python": "3.11.9",
+  "sqlite": "3.45.1",
+  "fixture": {
+    "rows": 6000,
+    "bytes": 60547072,
+    "sha256": "20815bc19a2819cdfd67b81f0515313948c90c3933a3e9704d8a5995ac1077be",
+    "semantic_digest": "7f2a466b2228f8ffa6f7d5b4d15629a08cf7cfac99e31d1a08203bd4fcd31d30",
+    "prep_seconds_excluded_from_measurements": 3.708430500002578
+  },
+  "measurements": [
+    {
+      "writer_mib": 2,
+      "reader_mib": 2,
+      "elapsed_seconds": 11.952499800012447,
+      "cpu_seconds": 9.859375,
+      "logical_read_bytes": 920699308,
+      "logical_write_bytes": 170202948,
+      "settled_bytes": 47509504,
+      "lifetime_peak_rss_bytes": 52510720,
+      "lifetime_peak_private_bytes": 40218624
+    },
+    {
+      "writer_mib": 128,
+      "reader_mib": 2,
+      "elapsed_seconds": 8.344993999984581,
+      "cpu_seconds": 7.71875,
+      "logical_read_bytes": 239215020,
+      "logical_write_bytes": 47805752,
+      "settled_bytes": 47509504,
+      "lifetime_peak_rss_bytes": 108711936,
+      "lifetime_peak_private_bytes": 97071104
+    },
+    {
+      "writer_mib": 128,
+      "reader_mib": 128,
+      "elapsed_seconds": 8.299155400018208,
+      "cpu_seconds": 7.703125,
+      "logical_read_bytes": 126439852,
+      "logical_write_bytes": 47805752,
+      "settled_bytes": 47509504,
+      "lifetime_peak_rss_bytes": 177274880,
+      "lifetime_peak_private_bytes": 167141376
+    },
+    {
+      "writer_mib": 256,
+      "reader_mib": 256,
+      "elapsed_seconds": 8.254487900005188,
+      "cpu_seconds": 7.703125,
+      "logical_read_bytes": 126439852,
+      "logical_write_bytes": 47805752,
+      "settled_bytes": 47509504,
+      "lifetime_peak_rss_bytes": 177643520,
+      "lifetime_peak_private_bytes": 167272448
+    }
+  ],
+  "same_in_all_configurations": {
+    "source_sha256_unchanged": true,
+    "semantic_digest_equal_to_legacy_oracle": true,
+    "observations": 6000,
+    "quick_check": ["ok"],
+    "foreign_key_check": [],
+    "content_payloads_verified": 30001,
+    "uncompressed_content_bytes_verified": 50867353,
+    "raw_observations_verified": 6000,
+    "fts_verified": true,
+    "target_settled_bytes": 47509504
+  },
+  "decision": {
+    "heavy_writer_cache_kib": 131072,
+    "cold_reader_cache_kib": 131072,
+    "lightweight_readonly_viewer": "unchanged SQLite default",
+    "setting": "connection-local PRAGMA cache_size=-131072; on demand, not preallocated or persisted",
+    "effect": "Only connections created by newly loaded code; no hot reload or control of an existing real worker.",
+    "changes": "No schema, algorithms, validation, message limits, acquisition range or scheduling changes."
+  },
+  "relative_reduction_2_2_to_128_128_percent": {
+    "logical_read_bytes": 86.27,
+    "logical_write_bytes": 71.91,
+    "elapsed_seconds": 30.57,
+    "cpu_seconds": 21.87
+  },
+  "regressions": {
+    "targeted": "51 codec/archive/delta/union/cache and independent review tests; 7.205s; all passed",
+    "whole_next": "247 tests; 73.052s; OK, 4 pre-existing environment skips",
+    "diff_check": "git diff --check passed"
+  },
+  "limitations": [
+    "Single same-input subprocess per configuration; elapsed times may reflect OS cache and concurrent real workload.",
+    "Process logical read/write counters are not physical disk I/O.",
+    "The 47.5 MB target fits in 128 MiB, unlike the real GB-scale target. Real-workload reduction cannot be inferred at the same ratio.",
+    "Fixture row count is only experimental scale, not a configured message or history cap.",
+    "128/256 MiB are per-connection suggested budgets; total memory includes Python, SQLite temporary data and concurrent connections."
+  ],
+  "measured_code_sha256_before_default_change": {
+    "compact_archive": "1e894708cd28ce25978152b0ca4772a9d3f62e2195f8a7ab086372baf8af29e7",
+    "content_pool": "893f81dfeaa109d50bd7dce437e1c6bc2dc09802a7c899337dec4267a898e2d4",
+    "compact_delta": "a344b2ef6c5f034b75567c1f5e654e19fb56f1b1143e2239504af6a1884143a6",
+    "union_archive": "97a4bb92d63f957f30a0209d0438a6c494a96e50edd204ef0ade1622677ae0ae"
+  }
+}

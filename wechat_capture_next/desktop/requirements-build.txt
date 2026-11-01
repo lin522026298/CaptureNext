@@ -1,0 +1,2 @@
+# Compatibility entry; prefer scripts/build-portable.ps1 at repository root.
+-r ../../requirements-build.lock

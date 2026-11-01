@@ -1,0 +1,45 @@
+{
+  "baseline": "f7a6391",
+  "reproduce": "python -m wechat_capture_next.tests.benchmark_io_cost",
+  "synthetic_only": true,
+  "current_source_SHA256": {
+    "backup": "97e252798e2a1d911550d08f67f18be46993e93fcfd890b886d71eaa04580eb6",
+    "materialize": "689e3cd7a1be353a626b206b549bf4c7377e76367f60b329109883ff92ea3daa",
+    "wal_memory": "40da880dbb38e1e4831ac7643c8ffa6abf7557eafee97120eb4de53b842738c1"
+  },
+  "limitations": [
+    "Single cached synthetic observation; elapsed times are not a stable performance estimate.",
+    "WAL counts cover audit plus three former frozen-prefix hash passes, not the full materializer.",
+    "Two complete live WAL prefix comparisons remain and are independently asserted by unit tests.",
+    "Backup counts cover the repeated 24 MiB payload only; every source file is still read fully.",
+    "No physical disk I/O measurement and no extrapolation to the historical 76 GB real backup."
+  ],
+  "wal": {
+    "frames_authenticated_both": 2048,
+    "frozen_stream_bytes_read_baseline": 33751168,
+    "frozen_stream_bytes_read_optimized": 8437792,
+    "audit_AES_decryptions_baseline": 2048,
+    "audit_AES_decryptions_optimized": 0,
+    "committed_SHA256_equal": true,
+    "seconds_baseline": 0.34724789997562766,
+    "seconds_optimized": 0.23377039999468252
+  },
+  "backup_24MiB_repeated_reports": {
+    "payload_readbacks_baseline": 24,
+    "payload_readbacks_optimized": 1,
+    "payload_decompressed_bytes_baseline": 25165824,
+    "payload_decompressed_bytes_optimized": 1048576,
+    "pages_integrity_scans_baseline": 2,
+    "pages_integrity_scans_optimized": 1,
+    "snapshot_id_equal": true,
+    "noop_both": true,
+    "repository_SHA256_unchanged_both": true,
+    "seconds_baseline": 0.26399280002806336,
+    "seconds_optimized": 0.19224689999828115
+  },
+  "regressions": {
+    "targeted": "43 tests in 17.172s; OK, 1 environment skip",
+    "whole_next_at_execution": "201 tests in 86.057s; OK, 4 environment skips",
+    "note": "Other agents were adding tests concurrently; final integrated suite is owned by the parent agent."
+  }
+}

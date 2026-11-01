@@ -1,0 +1,7 @@
+cryptography==50.0.2
+zstandard==0.25.0
+pycryptodome==3.23.0
+psutil==7.2.1
+pilk==0.2.4
+defusedxml==0.7.1
+Pillow==13.0.0

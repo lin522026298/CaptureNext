@@ -1,0 +1,3 @@
+# Compatibility install entry. Legacy source is retained, but old vulnerable
+# dependency pins must not downgrade the audited public build environment.
+-r ../requirements-build.lock

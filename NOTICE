@@ -1,0 +1,14 @@
+CaptureNext
+Copyright (C) 2026 CaptureNext contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See LICENSE for the full terms.
+
+Third-party components retain their respective licenses. See THIRD_PARTY.md
+and the dependency-notices included with a portable release. WeChat/Weixin
+are trademarks of their respective owner; this is an independent project.
