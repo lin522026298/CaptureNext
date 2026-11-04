@@ -1413,8 +1413,8 @@
     },
     {
       "path": "README.md",
-      "size": 5962,
-      "sha256": "18fbbc0a347c3a09f5e2738029bdafb8bf8917101fbe7045eff7d59f19c686c4"
+      "size": 7366,
+      "sha256": "caa48a43a5fbcf81e8e5476b7e4bb256a6cf01ac0e5ee0e6e935ed756e098ba0"
     },
     {
       "path": "requirements-build.lock",
@@ -1475,6 +1475,11 @@
       "path": "wechat_capture_v2/requirements.txt",
       "size": 182,
       "sha256": "684cf1769c7266582e4590bc1311312de43b957581df110ec73630cf455eedc9"
+    },
+    {
+      "path": "docs/agents.md",
+      "size": 8833,
+      "sha256": "a01e05578b7aa7f8f1d402f7ba0699708a054ee33800a285b9cf206ddafc4ca4"
     }
   ]
 }
