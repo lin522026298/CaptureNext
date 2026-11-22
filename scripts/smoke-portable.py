@@ -108,6 +108,23 @@ def main():
         attachment=b'CaptureNext synthetic attachment\x00\xff'
         attachment_sha=hashlib.sha256(attachment).hexdigest()
         (source_parent.parent/'synthetic-attachment.bin').write_bytes(attachment)
+        # The original name is already taken by different, equally long bytes.
+        # Drive the same APIs as the viewer's file card, not only the raw asset list.
+        sent=b'current draft\n'
+        prior=b'earlier draft\n'
+        assert len(sent)==len(prior)
+        sent_sha=hashlib.sha256(sent).hexdigest()
+        prior_sha=hashlib.sha256(prior).hexdigest()
+        sent_md5=hashlib.md5(sent).hexdigest()
+        bucket=source_parent.parent/'File'
+        bucket.mkdir()
+        (bucket/'draft.txt').write_bytes(prior)
+        (bucket/'draft(2).txt').write_bytes(sent)
+        card=(f'<msg><appmsg><title>draft.txt</title><type>6</type><appattach>'
+              f'<totallen>{len(sent)}</totallen></appattach><md5>{sent_md5}</md5></appmsg></msg>')
+        with closing(sqlite3.connect(fixture.plain)) as db,db:
+            assert db.execute(f'UPDATE "{TABLE}" SET local_type=49,message_content=? WHERE local_id=2',(card,)).rowcount==1
+        fixture.publish()
         source_before=hashlib.sha256(fixture.source.read_bytes()).hexdigest()
         command=[str(core),'--configure','--root',str(out),'--database-root',str(source_parent),
             '--keyring',str(keyring),'--account-alias','synthetic-account','--source-id','synthetic-computer','--self-username','self']
@@ -147,6 +164,24 @@ def main():
         assert final_state['summary']['versions']==43
         assets=host.wait(lambda:host.request('/api/assets?limit=200'))['rows']
         assert any(row['file_sha']==attachment_sha and row['available_in_cas'] for row in assets)
+        file_id=next(row['logical_id'] for row in current_rows if 'draft.txt' in row['body_text'])
+        page=host.request('/api/attachment-candidates?id='+file_id)
+        assert any(hint['field']=='appmsg.md5' for hint in page['hints'])
+        assert {sent_sha,prior_sha} <= {row['file_sha'] for row in page['rows']}
+        good=host.job('verify_attachment',logical_id=file_id,sha=sent_sha,kind='file')['result']
+        same_name=host.job('verify_attachment',logical_id=file_id,sha=prior_sha,kind='file')['result']
+        assert good['status']=='linked' and good['sha256_original_bytes_verified']
+        assert same_name['status']=='candidate' and not same_name['content_checksum_matches']
+        try:
+            host.job('export_attachment',logical_id=file_id,sha=prior_sha,kind='file',name='wrong-draft.txt')
+        except RuntimeError as error:
+            assert str(error)=='job_failed_export_attachment'
+        else:
+            raise AssertionError('unverified_candidate_export_unexpectedly_succeeded')
+        assert not (out/'archives'/'wechat-next'/'product'/'wrong-draft.txt').exists()
+        exported_card=host.job('export_attachment',logical_id=file_id,sha=sent_sha,kind='file',name='verified-draft.txt')['result']
+        assert exported_card['export_readback_verified']
+        assert (out/'archives'/'wechat-next'/'product'/'verified-draft.txt').read_bytes()==sent
         host.job('deep_verify')
         first=host.job('backup_pair',include_secrets=True)
         second=host.job('backup_pair',include_secrets=True)
@@ -183,6 +218,7 @@ def main():
             stopped_catchup=sum(row['body_text']=='synthetic stopped collector catchup' for row in offline),deep_verify=True,
             paired_restore=True,offline_view=True,no_change_backup_reused=True,
             default_keyless_restore=True,keyed_restore=True,restored_attachment_bytes_verified=True,
+            numbered_attachment_verified_and_exported=True,same_name_wrong_bytes_rejected=True,
             native_desktop_input=False,real_wechat_access=False)
         (out/'RESULT.private.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
         print(json.dumps(result))

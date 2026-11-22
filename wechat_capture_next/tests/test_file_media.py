@@ -52,6 +52,58 @@ class FileMediaTests(unittest.TestCase):
         self.assertFalse(result['content_checksum_matches'])
         self.assertIsNone(file_media.hints(self.archive, self.logical)['claims'][0]['md5'])
 
+    def test_outer_file_md5_verifies_renamed_file_not_same_name_old_file(self):
+        raw = b'new synthetic document'; md5 = hashlib.md5(raw).hexdigest()
+        self.prepare(f'<msg><appmsg><title>example.bin</title><type>6</type><appattach>'
+                     f'<totallen>{len(raw)}</totallen></appattach><md5>{md5}</md5></appmsg></msg>',
+                     raw=raw, path='file/2026-11/example(2).bin')
+        catalog = self.service.catalog.db; objects = self.service.objects
+        alternate = [('example.bin', b'old'), ('example (3).bin', b'x'*len(raw)),
+                     ('example(4).bin', b'wrong size'), ('example(2).pdf', b'y'*len(raw))]
+        alternates = []
+        for name, data in alternate:
+            sha = publish(objects, io.BytesIO(data), len(data))['sha256']
+            catalog.execute('INSERT INTO asset_history VALUES(?,?,?,?,?)',
+                            ('current', 'file/2026-11/'+name, sha, len(data), 'previous'))
+            alternates.append(sha)
+        catalog.commit()
+        page = file_media.candidates(self.archive, catalog, self.logical, kind='file')
+        self.assertEqual(page['hints'][0]['field'], 'appmsg.md5')
+        rows = {r['file_sha']:r for r in page['rows']}
+        self.assertEqual(set(rows), {self.sha, *alternates[:2]})
+        self.assertTrue(all(r['status']=='candidate' for r in rows.values()))
+        self.assertEqual(rows[self.sha]['evidence'][0]['basis'], ['local_collision_suffix_and_size_candidate'])
+        for sha in (self.sha, *alternates[:2]):
+            expected = 'linked' if sha == self.sha else 'candidate'
+            with self.subTest(expected=expected):
+                result = file_media.verify(self.archive, catalog, objects.db, logical_id=self.logical, sha=sha, kind='file')
+                self.assertEqual(result['status'], expected)
+                self.assertTrue(result['sha256_original_bytes_verified'])
+                self.assertFalse(result['origin_link_confirmed'])
+
+    def test_outer_md5_does_not_override_explicit_child_checksum(self):
+        raw = b'authoritative bytes'; outer = hashlib.md5(raw).hexdigest()
+        self.prepare(f'<msg><appmsg><type>6</type><title>example.bin</title><appattach>'
+                     f'<totallen>{len(raw)}</totallen><filemd5>{"a"*32}</filemd5></appattach>'
+                     f'<md5>{outer}</md5></appmsg></msg>', raw=raw)
+        result = file_media.verify(self.archive, self.service.catalog.db, self.service.objects.db,
+                                   logical_id=self.logical, sha=self.sha, kind='file')
+        self.assertEqual(result['status'], 'candidate')
+        self.assertEqual([c['field'] for c in file_media.hints(self.archive,self.logical)['claims']],
+                         ['appmsg.appattach.filemd5'])
+
+    def test_outer_md5_not_borrowed_for_multiple_attachments_or_without_size(self):
+        raw = b'known bytes'; md5 = hashlib.md5(raw).hexdigest()
+        attach = f'<appattach><totallen>{len(raw)}</totallen></appattach>'
+        body = f'<msg><appmsg><type>6</type><title>example.bin</title>{attach*2}<md5>{md5}</md5></appmsg></msg>'
+        self.prepare(body, raw=raw)
+        self.assertTrue(all(c['md5'] is None for c in file_media.hints(self.archive,self.logical)['claims']))
+        body = body.replace(attach*2,'<appattach/>')
+        self.archive.import_observations(dict(source_id='size-missing'), dict(snapshot_id='size-missing'),[
+            observation(native_locator=901, server_id='777', message_type='49', body_text=body)])
+        other = next(m['logical_id'] for m in self.archive.list_messages() if m['body_text']==body)
+        self.assertEqual(file_media.hints(self.archive,other)['claims'], [])
+
     def test_wrong_checksum_or_size_never_becomes_link(self):
         self.prepare('<msg><appmsg><title>example.bin</title><type>6</type><appattach><totallen>1</totallen><md5>'+('a'*32)+'</md5></appattach></appmsg></msg>')
         result = file_media.verify(self.archive, self.service.catalog.db, self.service.objects.db, logical_id=self.logical, sha=self.sha)
@@ -150,6 +202,13 @@ class FileMediaTests(unittest.TestCase):
         self.assertFalse(file_media._path_basis('File/名字(1).pdf', claim))
         self.assertEqual(file_media._path_basis('File/名字.pdf', claim), ['explicit_filename_equal'])
         self.assertIn('explicit_checksum_token_in_retained_path', file_media._path_basis('Video/'+('a'*32)+'.mp4', claim))
+        file_claim = dict(claim, kind='file', bytes=100)
+        self.assertEqual(file_media._path_basis('File/名字 (2).PDF', file_claim, size=100),
+                         ['local_collision_suffix_and_size_candidate'])
+        for path, size in [('File/名字(2).pdf', 99), ('File/名字 (0).pdf', 100),
+                           ('File/名字(2)新版.pdf', 100), ('File/名字(2).docx', 100)]:
+            with self.subTest(path=path,size=size):
+                self.assertFalse(file_media._path_basis(path, file_claim, size=size))
 
     def test_empty_original_is_authenticatable_and_selection_is_required(self):
         self.prepare(raw=b'')

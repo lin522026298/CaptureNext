@@ -43,4 +43,4 @@ def perform(core,action,params):
         protected=[state,root,*_source_roots(config)]
         if config.get('database_root'):protected.append(local_absolute(config['database_root']).parent)
         return export(archive,catalog,objects,destination=core.output_root/_name(params['name']),
-            protected_roots=protected,**args)
+            protected_roots=protected,require_linked=True,**args)

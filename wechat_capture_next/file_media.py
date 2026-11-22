@@ -21,6 +21,7 @@ from .union_assets import _blocks
 MAX_XML = 4 * 1024**2
 _MD5 = re.compile(r'[0-9a-fA-F]{32}')
 _SHA = re.compile(r'[0-9a-f]{64}')
+_LOCAL_COLLISION_SUFFIX = re.compile(r' ?\([1-9][0-9]{0,5}\)')
 
 
 def validate_request(params):
@@ -88,24 +89,37 @@ def hints(archive, logical_id, *, kind=None):
                             role='original' if field in ('originsourcemd5', 'rawmd5') else 'video'))
                         found = True
         if native_type == 49 and kind in (None, 'file'):
-            for app in root.findall('appmsg'):
+            apps = root.findall('appmsg')
+            for app in apps:
                 if app.findtext('type') != '6':
                     continue
-                for element in app.findall('appattach'):
+                attachments = app.findall('appattach')
+                for element in attachments:
                     filename = _filename(element.findtext('filename')) or _filename(app.findtext('title'))
                     size = _length(element.findtext('totallen'))
                     checksums = []
                     for field in ('filemd5', 'md5'):
+                        label = 'appmsg.appattach.'+field
                         for value in (element.get(field), *(v.text for v in element.findall(field))):
                             md5 = _checksum(value)
-                            if md5 and (field, md5) not in checksums:
-                                checksums.append((field, md5))
+                            if md5 and (label, md5) not in checksums:
+                                checksums.append((label, md5))
+                    # The Windows client also places the original file MD5
+                    # one level up. Bind it only to a single file with its
+                    # own size/name, and never override an attachment MD5.
+                    if (not checksums and len(apps) == len(attachments) == 1
+                            and filename is not None and size is not None):
+                        outer = app.findall('md5')
+                        if len(outer) == 1 and not len(outer[0]):
+                            md5 = _checksum(outer[0].text)
+                            if md5:
+                                checksums.append(('appmsg.md5', md5))
                     # Filename+size is a candidate, never confirmed without MD5.
-                    for field, md5 in checksums or [('filename_and_size', None)]:
+                    for field, md5 in checksums or [('appmsg.appattach.filename_and_size', None)]:
                         if md5 is None and (filename is None or size is None):
                             continue
                         claims.append(dict(observation_id=row['observation_id'], kind='file',
-                            field='appmsg.appattach.'+field, md5=md5, bytes=size,
+                            field=field, md5=md5, bytes=size,
                             filename=filename, role='file'))
                         found = True
         if not found:
@@ -192,7 +206,14 @@ def native_video_hints(archive,logical_id):
     return result,unsupported
 
 
-def _path_basis(path, claim):
+def _collision_filename_equal(retained, sent_name):
+    sent = PureWindowsPath(sent_name)
+    base, stored = sent.stem.casefold(), retained.stem.casefold()
+    return (retained.suffix.casefold() == sent.suffix.casefold() and stored.startswith(base)
+            and _LOCAL_COLLISION_SUFFIX.fullmatch(stored[len(base):]) is not None)
+
+
+def _path_basis(path, claim, *, size=None):
     if not isinstance(path, str):
         return []
     result = []
@@ -204,8 +225,15 @@ def _path_basis(path, claim):
     # Exact token, not an arbitrary substring embedded in a longer hex string.
     if claim['md5'] and re.search(r'(?<![0-9a-f])'+claim['md5']+r'(?![0-9a-f])', path.lower()):
         result.append('explicit_checksum_token_in_retained_path')
-    if claim['filename'] and PureWindowsPath(path).name.casefold() == claim['filename'].casefold():
-        result.append('explicit_filename_equal')
+    if claim['filename']:
+        retained = PureWindowsPath(path)
+        if retained.name.casefold() == claim['filename'].casefold():
+            result.append('explicit_filename_equal')
+        elif (claim.get('kind') == 'file' and size is not None and claim.get('bytes') == size
+              and _collision_filename_equal(retained, claim['filename'])):
+            # A local (n) collision suffix only discovers a candidate. It
+            # never makes the content verified or establishes provenance.
+            result.append('local_collision_suffix_and_size_candidate')
     return result
 
 
@@ -237,7 +265,7 @@ def candidates(archive, catalog, logical_id, *, kind=None, after='', selected_sh
                     raise ValueError('invalid retained attachment metadata')
                 evidence = []
                 for claim in [*result['claims'],*native]:
-                    basis = _path_basis(path, claim)
+                    basis = _path_basis(path, claim, size=size)
                     if basis:
                         evidence.append(dict(scope=scope, source_id=source, relative_path=path,
                             claim=claim, basis=basis, length_matches=claim['bytes'] is None or claim['bytes'] == size))
@@ -308,7 +336,12 @@ def verify(archive, catalog, objects, *, logical_id, sha, kind=None):
     return _result(row, hints(archive, logical_id, kind=kind)['claims'], md5, length)
 
 
-def export(archive, catalog, objects, *, logical_id, sha, destination, protected_roots, kind=None):
+class UnverifiedOriginal(ValueError):
+    """The selected candidate cannot be exported as a confirmed original."""
+
+
+def export(archive, catalog, objects, *, logical_id, sha, destination, protected_roots, kind=None,
+           require_linked=False):
     """Write once to an explicitly supplied fresh local path; never auto-open.
 
     Caller MUST include the bound account/source roots in protected_roots. This
@@ -332,11 +365,21 @@ def export(archive, catalog, objects, *, logical_id, sha, destination, protected
     row = _selected(archive, catalog, logical_id, sha, kind)
     if objects.execute('SELECT 1 FROM file WHERE hash=?', (sha,)).fetchone() is None:
         raise FileNotFoundError('selected original is not in the bound CAS')
+    claims = hints(archive, logical_id, kind=kind)['claims']
+    if require_linked:
+        if not any(claim['md5'] and claim['bytes'] in (None, row['bytes']) for claim in claims):
+            raise UnverifiedOriginal('original_missing_or_not_confirmed_for_this_message')
+        checked = _result(row, claims, *_consume(objects, row))
+        if checked['status'] != 'linked':
+            raise UnverifiedOriginal('original_missing_or_not_confirmed_for_this_message')
     created = None
     try:
         with target.open('xb') as stream:
             created = os.fstat(stream.fileno())
             md5, length = _consume(objects, row, stream)
+            result = _result(row, claims, md5, length)
+            if require_linked and result['status'] != 'linked':
+                raise UnverifiedOriginal('original_missing_or_not_confirmed_for_this_message')
             stream.flush(); os.fsync(stream.fileno())
         # Independent readback of the requested deliverable, in bounded blocks.
         actual_sha = hashlib.sha256(); actual_md5 = hashlib.md5(); actual_length = 0
@@ -345,7 +388,6 @@ def export(archive, catalog, objects, *, logical_id, sha, destination, protected
                 actual_sha.update(block); actual_md5.update(block); actual_length += len(block)
         if (actual_sha.hexdigest() != sha or actual_md5.hexdigest() != md5 or actual_length != length):
             raise ValueError('export readback differs from authenticated original')
-        result = _result(row, hints(archive, logical_id, kind=kind)['claims'], md5, length)
         result.update(destination=str(target), exported=True, export_readback_verified=True, automatically_opened=False)
         return result
     except BaseException:

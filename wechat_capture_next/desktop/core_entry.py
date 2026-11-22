@@ -13,8 +13,4 @@ if __name__ == '__main__':
     if sys.argv[1:2] == ['--configure']:
         from wechat_capture_next.first_run import main as configure_main
         raise SystemExit(configure_main(sys.argv[2:]))
-    if sys.argv[1:2] == ['--key-probe']:
-        from tools.read_weixin4_runtime_keys import main as probe_main
-        del sys.argv[1]
-        raise SystemExit(probe_main())
     raise SystemExit(main())

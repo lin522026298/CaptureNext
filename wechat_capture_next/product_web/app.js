@@ -524,7 +524,7 @@
   }
   function renderAttachmentCandidates(box,data,id,seq,view){
     if(!data?.hints?.length&&!data?.native_filename_hints?.length){box.append(element("p","hint","此消息未解析出受支持的文件／视频证据。原始字段仍可在观察详情查阅。"));return;}
-    box.append(element("p","hint","名称／路径或原生文件标识只用于候选，原生标识不是内容 MD5；需完整校验才确认内容相等，不等于物理来源确证。原字节导出不会自动执行文件；受支持的小型视频或 UTF-8 文本可在此预览，其他原件仍可导出。"),jsonDetail("消息原字段中的附件线索",{content_claims:data.hints,native_filename_hints:data.native_filename_hints||[]}));
+    box.append(element("p","hint","名称、路径和原生文件标识只用于找候选。原件导出会核对消息中的内容校验值和完整文件字节；缺少证据或不符时不会写出文件。内容相同不等于确认物理来源，也不会自动打开文件。"),jsonDetail("消息原字段中的附件线索",{content_claims:data.hints,native_filename_hints:data.native_filename_hints||[]}));
     if(!data.rows.length)box.append(element("p","hint","未找到匹配的已保存候选，关联未知；不能据此证明原文件永久缺失。"));
     for(const item of data.rows){const row=element("div","observation");row.append(element("p","hint",`${fmt(item.bytes)} B · ${item.evidence[0]?.relative_path||item.file_sha}`),jsonDetail("候选来源与依据（有界示例，原记录保留）",item));
     for(const [action,label] of [["prepare_attachment","预览文本／播放视频"],["verify_attachment","核实原字节与关联"],["export_attachment","导出原文件…"]]){const button=element("button","secondary",label);button.type="button";
@@ -558,9 +558,9 @@
               }else if(["video/mp4","video/webm","video/ogg"].includes(mime)){
                 const blob=await response.blob();if(seq!==detailGeneration||view!==archiveView)return;
                 const url=URL.createObjectURL(blob);mediaUrls.add(url);const video=element("video","media-video");video.controls=true;video.preload="metadata";video.src=url;
-                video.addEventListener("error",()=>{box.append(element("p","hint","此视频容器已保存，但当前浏览器／系统不支持其编码；请导出原字节使用合适的播放器。"));},{once:true});box.append(video);
+                video.addEventListener("error",()=>{box.append(element("p","hint","此视频容器已保存，但当前浏览器／系统不支持其编码；能通过内容校验时，可导出原文件再使用合适的播放器。"));},{once:true});box.append(video);
               }else throw new Error("unsupported preview MIME");
-            }else box.append(element("p","hint","原文件保留；当前预览不支持此格式、编码或大小，可导出原字节。"));
+            }else box.append(element("p","hint","候选已保存，但当前预览不支持此格式、编码或大小。只有与消息内容证据核对一致才可作为原件导出。"));
           }
           if(row.result?.destination)box.append(element("p","body","保存位置："+row.result.destination));
           button.textContent="处理完成";return;
